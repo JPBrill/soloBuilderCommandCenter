@@ -1,26 +1,47 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSession, signOut } from 'next-auth/react';
 import { GoogleGenAI } from '@google/genai';
 import { motion } from 'motion/react';
 import { 
   Sparkles, 
   Terminal, 
   Command, 
-  Github, 
   LayoutDashboard, 
   Settings,
   Search,
-  MessageSquare,
   Cpu,
-  Activity
+  Activity,
+  LogOut,
+  Github
 } from 'lucide-react';
-import { ProjectCard } from '@/components/ui/ProjectCard';
+import { ProjectCard } from '@/components/ProjectCard';
+import { LoginButton } from '@/components/LoginButton';
+import { GitHubRepo } from '@/lib/github';
 
 export default function Dashboard() {
+  const { data: session, status } = useSession();
   const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState('');
   const [loading, setLoading] = useState(false);
+  const [repos, setRepos] = useState<GitHubRepo[]>([]);
+  const [reposLoading, setReposLoading] = useState(false);
+
+  useEffect(() => {
+    if (session?.user) {
+      setReposLoading(true);
+      fetch('/api/user/repos')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setRepos(data);
+          }
+        })
+        .catch(err => console.error(err))
+        .finally(() => setReposLoading(false));
+    }
+  }, [session]);
 
   const handleAskAI = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +51,6 @@ export default function Dashboard() {
     setResponse('');
     
     try {
-      // Attempt to use client-side key first (exposed via next.config.ts)
       const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
       
       if (apiKey) {
@@ -41,7 +61,6 @@ export default function Dashboard() {
         });
         setResponse(result.text || 'No response generated.');
       } else {
-        // Fallback to server-side route if client key is not available
         const res = await fetch('/api/test-gemini', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -60,32 +79,47 @@ export default function Dashboard() {
     }
   };
 
-  const projects = [
-    {
-      name: "Project Alpha",
-      description: "Next.js e-commerce platform with Stripe integration",
-      deployStatus: "success" as const,
-      prCount: 2,
-      issueCount: 5,
-      lastUpdated: "2h ago"
-    },
-    {
-      name: "Project Beta",
-      description: "Internal dashboard for analytics visualization",
-      deployStatus: "building" as const,
-      prCount: 0,
-      issueCount: 1,
-      lastUpdated: "5m ago"
-    },
-    {
-      name: "Project Gamma",
-      description: "Mobile app backend API service",
-      deployStatus: "error" as const,
-      prCount: 12,
-      issueCount: 3,
-      lastUpdated: "1d ago"
-    }
-  ];
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-aira-bg-base flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-aira-primary/20 border border-aira-primary/50" />
+          <div className="text-aira-text-muted font-mono text-sm">Initializing System...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-aira-bg-base flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-aira-primary/10 via-transparent to-transparent opacity-50" />
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative z-10 max-w-md space-y-8"
+        >
+          <div className="mx-auto w-20 h-20 bg-aira-bg-elevated rounded-2xl border border-aira-primary/30 flex items-center justify-center shadow-[0_0_30px_-5px_rgba(53,189,248,0.3)]">
+            <LayoutDashboard className="w-10 h-10 text-aira-primary" />
+          </div>
+          
+          <div className="space-y-4">
+            <h1 className="text-4xl font-bold tracking-tight text-aira-text">
+              Solo Builder <span className="text-aira-primary">Command Center</span>
+            </h1>
+            <p className="text-aira-text-muted text-lg">
+              Connect your GitHub to access your personal dashboard with AI-powered insights.
+            </p>
+          </div>
+
+          <div className="flex justify-center pt-4">
+            <LoginButton />
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-aira-bg-base text-aira-text p-6 md:p-12 font-sans selection:bg-aira-primary/30">
@@ -100,7 +134,10 @@ export default function Dashboard() {
               </div>
               <h1 className="text-3xl font-bold tracking-tight">Command Center</h1>
             </div>
-            <p className="text-aira-text-muted">Welcome back, Builder. System status: <span className="text-emerald-400">Operational</span></p>
+            <p className="text-aira-text-muted">
+              Welcome back, <span className="text-aira-text font-medium">{session.user?.name}</span>. 
+              System status: <span className="text-emerald-400">Operational</span>
+            </p>
           </div>
           
           <div className="flex items-center gap-4">
@@ -112,20 +149,50 @@ export default function Dashboard() {
             </button>
             <div className="h-8 w-[1px] bg-white/10 mx-2" />
             <div className="flex items-center gap-3 pl-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-aira-primary to-aira-secondary" />
-              <div className="hidden md:block">
-                <div className="text-sm font-medium">Alex Dev</div>
-                <div className="text-xs text-aira-text-muted">Pro Plan</div>
-              </div>
+              {session.user?.image ? (
+                <img src={session.user.image} alt="Profile" className="w-8 h-8 rounded-full border border-white/10" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-aira-primary to-aira-secondary" />
+              )}
+              <button 
+                onClick={() => signOut()}
+                className="p-2 hover:bg-red-500/10 hover:text-red-400 rounded-lg transition-colors text-aira-text-muted"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </header>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {projects.map((project, index) => (
-            <ProjectCard key={index} {...project} />
-          ))}
+        {/* Repos Grid */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Github className="w-5 h-5 text-aira-text" />
+              Active Repositories
+            </h2>
+            {reposLoading && <div className="text-xs text-aira-primary animate-pulse font-mono">SYNCING...</div>}
+          </div>
+          
+          {reposLoading && repos.length === 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-48 rounded-xl bg-white/5 animate-pulse border border-white/5" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {repos.map((repo) => (
+                <ProjectCard key={repo.id} repo={repo} />
+              ))}
+              {repos.length === 0 && !reposLoading && (
+                <div className="col-span-3 py-12 text-center text-aira-text-muted border border-dashed border-white/10 rounded-xl">
+                  No repositories found.
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Main Content Area */}
@@ -166,7 +233,7 @@ export default function Dashboard() {
                   type="text"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Ask Gemini to analyze deployment logs..."
+                  placeholder="Ask Gemini to analyze your repos..."
                   className="w-full bg-aira-bg-base border border-white/10 rounded-lg py-3 pl-10 pr-12 focus:outline-none focus:border-aira-primary/50 focus:ring-1 focus:ring-aira-primary/50 transition-all placeholder:text-aira-text-muted/50"
                 />
                 <button 
