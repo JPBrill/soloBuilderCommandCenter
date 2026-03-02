@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  --color-aira-bg-base: #05060a;
+  --color-aira-bg-elevated: #101218;
+  --color-aira-bg-surface: #1a1d24;
+  --color-aira-primary: #35bdf8;
+  --color-aira-primary-hover: #15f4d1;
+  --color-aira-secondary: #a855f7;
+  --color-aira-text: #f1f5f9;
+  --color-aira-text-muted: #94a3b8;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Custom utilities for glass effect */
+@layer utilities {
+  .glass-panel {
+    @apply bg-aira-bg-surface/50 backdrop-blur-md border border-aira-primary/20;
+  }
+}
+
+body {
+  @apply bg-aira-bg-base text-aira-text font-sans antialiased;
+}

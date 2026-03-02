@@ -1,0 +1,5 @@
+{
+  "name": "Solo Builder Command Center",
+  "description": "AI-powered dashboard for GitHub/Vercel/Notion integrations",
+  "requestFramePermissions": []
+}
