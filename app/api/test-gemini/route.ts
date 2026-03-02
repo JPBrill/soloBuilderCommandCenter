@@ -1,33 +1,39 @@
-import { GoogleGenAI } from "@google/genai";
-import { NextResponse } from "next/server";
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-
+    
     if (!apiKey) {
       return NextResponse.json(
-        { error: "Configuration Error: GEMINI_API_KEY is missing." },
-        { status: 500 }
+        { 
+          success: false, 
+          error: 'GEMINI_API_KEY not set in environment variables' 
+        },
+        { status: 400 }
       );
     }
 
-    const ai = new GoogleGenAI({ apiKey });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: "Solo Builder Command Center test successful",
+    const prompt = 'Solo Builder Command Center test: respond with "AI integration working perfectly!"';
+    const result = await model.generateContent(prompt);
+    const response = await result.response.text();
+
+    return NextResponse.json({
+      success: true,
+      message: response.trim()
     });
 
-    return NextResponse.json({ 
-      status: "success",
-      message: response.text,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error: any) {
-    console.error("Gemini API Error:", error);
+  } catch (error) {
+    console.error('Gemini API error:', error);
     return NextResponse.json(
-      { error: "AI Service Unavailable", details: error.message },
+      { 
+        success: false, 
+        error: 'Gemini API error. Check logs.' 
+      },
       { status: 500 }
     );
   }
