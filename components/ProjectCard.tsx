@@ -56,8 +56,8 @@ export function ProjectCard({ repo }: ProjectCardProps) {
           <div className="flex items-center gap-2 p-2.5 rounded-lg bg-aira-bg-base/30 border border-white/5">
             <GitBranch className="w-4 h-4 text-aira-secondary" />
             <div>
-              <div className="text-sm font-mono font-bold text-aira-text">{repo.default_branch}</div>
-              <div className="text-[10px] text-aira-text-muted uppercase tracking-wider">Branch</div>
+              <div className="text-sm font-mono font-bold text-aira-text">{repo.open_prs_count ?? 0}</div>
+              <div className="text-[10px] text-aira-text-muted uppercase tracking-wider">Open PRs</div>
             </div>
           </div>
           
