@@ -1,34 +1,34 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
 
-export async function POST(req: Request) {
+export async function GET() {
   try {
-    const { prompt } = await req.json();
-    
-    // Note: In this specific AI Studio environment, it is recommended to call Gemini 
-    // from the client side using NEXT_PUBLIC_GEMINI_API_KEY.
-    // However, for a standard Next.js app, server-side calls are perfectly fine 
-    // and often preferred for security (hiding the key).
-    const apiKey = process.env.GEMINI_API_KEY; 
-    
+    const apiKey = process.env.GEMINI_API_KEY;
+
     if (!apiKey) {
       return NextResponse.json(
-        { error: "GEMINI_API_KEY is not set in environment variables." }, 
+        { error: "Configuration Error: GEMINI_API_KEY is missing." },
         { status: 500 }
       );
     }
 
     const ai = new GoogleGenAI({ apiKey });
     
-    // Using the new @google/genai SDK syntax
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: prompt || "Hello from the server!",
+      contents: "Solo Builder Command Center test successful",
     });
-    
-    return NextResponse.json({ text: response.text });
+
+    return NextResponse.json({ 
+      status: "success",
+      message: response.text,
+      timestamp: new Date().toISOString()
+    });
   } catch (error: any) {
     console.error("Gemini API Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: "AI Service Unavailable", details: error.message },
+      { status: 500 }
+    );
   }
 }
