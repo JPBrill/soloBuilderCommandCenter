@@ -14,11 +14,14 @@ import {
   Cpu,
   Activity,
   LogOut,
-  Github
+  Github,
+  Globe
 } from 'lucide-react';
 import { ProjectCard } from '@/components/ProjectCard';
+import { VercelProjectCard } from '@/components/VercelProjectCard';
 import { LoginButton } from '@/components/LoginButton';
 import { GitHubRepo } from '@/lib/github';
+import { VercelProject } from '@/lib/vercel';
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -27,9 +30,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [reposLoading, setReposLoading] = useState(false);
+  const [vercelProjects, setVercelProjects] = useState<VercelProject[]>([]);
+  const [vercelLoading, setVercelLoading] = useState(false);
 
   useEffect(() => {
     if (session?.user) {
+      // Fetch GitHub Repos
       setReposLoading(true);
       fetch('/api/user/repos')
         .then(res => res.json())
@@ -40,6 +46,18 @@ export default function Dashboard() {
         })
         .catch(err => console.error(err))
         .finally(() => setReposLoading(false));
+
+      // Fetch Vercel Projects
+      setVercelLoading(true);
+      fetch('/api/vercel/projects')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setVercelProjects(data);
+          }
+        })
+        .catch(err => console.error(err))
+        .finally(() => setVercelLoading(false));
     }
   }, [session]);
 
@@ -189,6 +207,36 @@ export default function Dashboard() {
               {repos.length === 0 && !reposLoading && (
                 <div className="col-span-3 py-12 text-center text-aira-text-muted border border-dashed border-white/10 rounded-xl">
                   No repositories found.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Vercel Projects Grid */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Globe className="w-5 h-5 text-aira-text" />
+              Vercel Deployments
+            </h2>
+            {vercelLoading && <div className="text-xs text-aira-primary animate-pulse font-mono">SYNCING...</div>}
+          </div>
+          
+          {vercelLoading && vercelProjects.length === 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-48 rounded-xl bg-white/5 animate-pulse border border-white/5" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {vercelProjects.map((project) => (
+                <VercelProjectCard key={project.id} project={project} />
+              ))}
+              {vercelProjects.length === 0 && !vercelLoading && (
+                <div className="col-span-3 py-12 text-center text-aira-text-muted border border-dashed border-white/10 rounded-xl">
+                  No Vercel projects found.
                 </div>
               )}
             </div>
