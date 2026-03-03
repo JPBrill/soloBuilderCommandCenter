@@ -20,8 +20,9 @@ import {
 import { ProjectCard } from '@/components/ProjectCard';
 import { VercelProjectCard } from '@/components/VercelProjectCard';
 import { LoginButton } from '@/components/LoginButton';
-import { GitHubRepo } from '@/lib/github';
+import { GitHubRepo, GitHubEvent } from '@/lib/github';
 import { VercelProject } from '@/lib/vercel';
+import { AnimatePresence } from 'motion/react';
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -32,6 +33,12 @@ export default function Dashboard() {
   const [reposLoading, setReposLoading] = useState(false);
   const [vercelProjects, setVercelProjects] = useState<VercelProject[]>([]);
   const [vercelLoading, setVercelLoading] = useState(false);
+  const [activities, setActivities] = useState<GitHubEvent[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (session?.user) {
@@ -58,6 +65,18 @@ export default function Dashboard() {
         })
         .catch(err => console.error(err))
         .finally(() => setVercelLoading(false));
+
+      // Fetch GitHub Activity
+      setActivitiesLoading(true);
+      fetch('/api/user/activity')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setActivities(data);
+          }
+        })
+        .catch(err => console.error(err))
+        .finally(() => setActivitiesLoading(false));
     }
   }, [session]);
 
@@ -159,10 +178,16 @@ export default function Dashboard() {
           </div>
           
           <div className="flex items-center gap-4">
-            <button className="p-2 hover:bg-white/5 rounded-lg transition-colors relative group">
+            <button 
+              onClick={() => setIsSearchOpen(true)}
+              className="p-2 hover:bg-white/5 rounded-lg transition-colors relative group"
+            >
               <Search className="w-5 h-5 text-aira-text-muted group-hover:text-aira-text" />
             </button>
-            <button className="p-2 hover:bg-white/5 rounded-lg transition-colors relative group">
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2 hover:bg-white/5 rounded-lg transition-colors relative group"
+            >
               <Settings className="w-5 h-5 text-aira-text-muted group-hover:text-aira-text" />
             </button>
             <div className="h-8 w-[1px] bg-white/10 mx-2" />
@@ -304,25 +329,167 @@ export default function Dashboard() {
               </h2>
               
               <div className="space-y-6 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[1px] before:bg-white/10">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="relative pl-10 group">
-                    <div className="absolute left-[15px] top-1.5 w-2 h-2 rounded-full bg-aira-bg-surface border border-white/20 group-hover:border-aira-primary group-hover:bg-aira-primary transition-colors z-10" />
-                    <div className="text-sm">
-                      <span className="text-aira-primary font-medium">deployment-#{1020 + i}</span>
-                      <span className="text-aira-text-muted"> was triggered by </span>
-                      <span className="text-white">main</span>
+                {activitiesLoading ? (
+                  [1, 2, 3].map((i) => (
+                    <div key={i} className="relative pl-10 animate-pulse">
+                      <div className="absolute left-[15px] top-1.5 w-2 h-2 rounded-full bg-white/10" />
+                      <div className="h-4 bg-white/5 rounded w-3/4 mb-2" />
+                      <div className="h-3 bg-white/5 rounded w-1/4" />
                     </div>
-                    <div className="text-xs text-aira-text-muted mt-1 font-mono">
-                      {i * 15}m ago
+                  ))
+                ) : activities.length > 0 ? (
+                  activities.map((event) => (
+                    <div key={event.id} className="relative pl-10 group">
+                      <div className="absolute left-[15px] top-1.5 w-2 h-2 rounded-full bg-aira-bg-surface border border-white/20 group-hover:border-aira-primary group-hover:bg-aira-primary transition-colors z-10" />
+                      <div className="text-sm">
+                        <span className="text-aira-primary font-medium">{event.type.replace('Event', '')}</span>
+                        <span className="text-aira-text-muted"> in </span>
+                        <span className="text-white truncate max-w-[150px] inline-block align-bottom">{event.repo.name.split('/')[1]}</span>
+                      </div>
+                      <div className="text-xs text-aira-text-muted mt-1 font-mono">
+                        {new Date(event.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center text-aira-text-muted py-8 text-sm">
+                    No recent activity found.
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
 
         </div>
       </div>
+
+      {/* Search Overlay */}
+      <AnimatePresence>
+        {isSearchOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-aira-bg-base/80 backdrop-blur-md flex items-start justify-center pt-20 px-6"
+            onClick={() => setIsSearchOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-2xl bg-aira-bg-elevated border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-white/10 flex items-center gap-4">
+                <Search className="w-6 h-6 text-aira-primary" />
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Search repositories, projects, or activity..."
+                  className="w-full bg-transparent border-none focus:ring-0 text-lg text-aira-text placeholder:text-aira-text-muted/50"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <button 
+                  onClick={() => setIsSearchOpen(false)}
+                  className="text-xs font-mono text-aira-text-muted hover:text-white px-2 py-1 border border-white/10 rounded"
+                >
+                  ESC
+                </button>
+              </div>
+              <div className="p-6 min-h-[300px]">
+                {searchQuery ? (
+                  <div className="space-y-4">
+                    <p className="text-xs font-mono text-aira-text-muted uppercase tracking-widest">Results</p>
+                    {/* Filtered results would go here */}
+                    <div className="text-sm text-aira-text-muted italic">Searching for &quot;{searchQuery}&quot;...</div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full py-12 text-aira-text-muted gap-4">
+                    <Command className="w-12 h-12 opacity-20" />
+                    <p>Type to start searching across your command center</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Settings Sidebar */}
+      <AnimatePresence>
+        {isSettingsOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end"
+            onClick={() => setIsSettingsOpen(false)}
+          >
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="w-full max-w-md bg-aira-bg-elevated border-l border-white/10 h-full p-8 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-12">
+                <h2 className="text-2xl font-bold flex items-center gap-3">
+                  <Settings className="w-6 h-6 text-aira-primary" />
+                  Settings
+                </h2>
+                <button 
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                >
+                  <LogOut className="w-5 h-5 rotate-180" />
+                </button>
+              </div>
+
+              <div className="space-y-8">
+                <section>
+                  <h3 className="text-xs font-mono text-aira-text-muted uppercase tracking-widest mb-4">Profile</h3>
+                  <div className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/5">
+                    <img src={session?.user?.image || ''} className="w-12 h-12 rounded-full" alt="Profile" />
+                    <div>
+                      <div className="font-bold">{session?.user?.name}</div>
+                      <div className="text-sm text-aira-text-muted">{session?.user?.email}</div>
+                    </div>
+                  </div>
+                </section>
+
+                <section>
+                  <h3 className="text-xs font-mono text-aira-text-muted uppercase tracking-widest mb-4">Preferences</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
+                      <span>AI Auto-Analysis</span>
+                      <div className="w-10 h-5 bg-aira-primary rounded-full relative">
+                        <div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full" />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
+                      <span>Real-time Sync</span>
+                      <div className="w-10 h-5 bg-aira-primary rounded-full relative">
+                        <div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full" />
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="pt-12">
+                  <button 
+                    onClick={() => signOut()}
+                    className="w-full py-4 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all font-bold"
+                  >
+                    Disconnect System
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

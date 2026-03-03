@@ -56,3 +56,34 @@ export async function getUserRepos(accessToken: string): Promise<GitHubRepo[]> {
 
   return enrichedRepos;
 }
+
+export interface GitHubEvent {
+  id: string;
+  type: string;
+  actor: {
+    login: string;
+    avatar_url: string;
+  };
+  repo: {
+    name: string;
+    url: string;
+  };
+  payload: any;
+  created_at: string;
+}
+
+export async function getUserActivity(accessToken: string, username: string): Promise<GitHubEvent[]> {
+  const res = await fetch(`https://api.github.com/users/${username}/events?per_page=10`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/vnd.github.v3+json',
+    },
+    next: { revalidate: 60 }
+  });
+
+  if (!res.ok) {
+    throw new Error(`GitHub Activity API Error: ${res.statusText}`);
+  }
+
+  return res.json();
+}
