@@ -7,7 +7,7 @@ AI-powered dashboard for GitHub/Vercel/Notion integrations.
 - **AIRA Design System**: Custom sci-fi inspired UI with Tailwind CSS.
 - **Gemini AI Integration**: Built-in AI assistant using Google's `gemini-2.5-flash` model.
 - **Real-time Status**: Mock data visualization for project deployments.
-- **Responsive Layout**: Mobile-first design using Next.js App Router.
+- **Responsive Layout**: Mobile-first design using Next.js App Router. (Vercel integration)
 
 ## Tech Stack
 
