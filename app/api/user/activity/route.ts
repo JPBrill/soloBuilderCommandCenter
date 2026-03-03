@@ -20,6 +20,15 @@ export async function GET() {
       return NextResponse.json({ error: "No access token found" }, { status: 401 });
     }
 
+    if (!username) {
+  return NextResponse.json({ error: "Username not found in session" }, { status: 400 });
+}
+
+
+    if (!username) {
+      return NextResponse.json({ error: "Username not found in session" }, { status: 400 });
+    }
+
     // We need the actual login name. If session.user.name isn't it, we might need to fetch user profile first.
     // But usually with GitHub provider, it's available.
     const activity = await getUserActivity(accessToken, username);
